@@ -10,9 +10,24 @@ library(httr)
 library(jsonlite)
 library(plotly)
 library(htmltools)
+library(leaflet)
+library(rgdal)
+library(leaflet.extras)
 
-## Creation of ckan function
+## Creation of ckan function for csv data
 ckanSQL <- function(url) {
+  # Make the Request
+  r <- RETRY("GET", URLencode(url))
+  # Extract Content
+  c <- content(r, "text")
+  # Basic gsub to make NA's consistent with R
+  json <- gsub('NaN', 'NA', c, perl = TRUE)
+  # Create Dataframe
+  data.frame(jsonlite::fromJSON(json)$result$records)
+}
+
+## Creation of ckan function for geojson data
+ckanMap <- function(url) {
   # Make the Request
   r <- RETRY("GET", URLencode(url))
   # Extract Content
@@ -38,51 +53,36 @@ ckanUnique <- function(id, field) {
  sidebar <- dashboardSidebar(
    sidebarMenu(
      id = "tabs",
-     menuItem("Charts", icon = icon("bar-chart"), tabName = "plot"),
-     menuItem("Death Data Table", icon = icon("table"), tabName = "datatable"),
-     radioButtons("cause",
-                  "Pick a cause of death: ",
-                  choices = unique(State.Death.data$Cause.Name),
-                  #multiple = FALSE,
-                  #selectize = TRUE,
-                  selected = "Alzheimer's disease"
-     ),
-     selectInput("state",
-                 "State:",
-                 choices = sort(unique(State.Death.data$State)),
-                 multiple = TRUE,
-                 selectize = TRUE,
-                 selected = "Alabama"),
-     selectInput("year", 
-                 "Pick a Year: ",
-                 choices = sort(unique(State.Death.data$Year)),
-                 multiple = FALSE,
-                 selectize = TRUE,
-                 selected = 1999
-     )
+     menuItem("Charts", icon = icon("bar-chart"), tabName = "chart"),
+     menuItem("Data Table", icon = icon("table"), tabName = "datatable"),
+     menuItem("Map", icon = icon("map"), tabName = "map")
+     radioButtons(),
+     selectInput(),
+     selectInput(),
+     sliderInput()
    )
  )
  
  body <- dashboardBody(
    tabItems(
      tabItem("plot",
-             # Don't be afraid to delete stuff. Once you commit it you can always go back and grab it from Git History!
-             # fluidRow(
-             #   infoBoxOutput("mass"),
-             #   valueBoxOutput("height")
-             # ),
-             fluidRow(
+           fluidRow(
                tabBox(title = "Plot",
                       width = 12,
-                      tabPanel("Cumulative Deaths", plotOutput("plot1")),
-                      tabPanel("Death Rate", plotOutput("plot2")),
-                      tabPanel("Time Plot", plotOutput("plot3")))
+                      tabPanel("Chart 1", plotOutput("plot1")),
+                      tabPanel("Chart 2", plotOutput("plot2"))
+                      )
              )
      ),
      tabItem("datatable",
              fluidPage(
                box(title = "Selected Character Stats", DT::dataTableOutput("datatable"), width = 12))
-     )
+     ),
+     tabItem("map",
+             fluidPage(
+               box(title = "Map",leafletOutput("mymap") )
+                       )
+             
    ) 
  )
  
@@ -92,7 +92,7 @@ ckanUnique <- function(id, field) {
  
  # Define server logic
  server <- function(input, output) {
-   #Reactive Elements 
+   #Reactive Element for Charts and Datatable 
    df.filter <- reactive ({
      url <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20*%20FROM%20%227f5da957-01b5-4187-a842-3f215d30d7e8%22%20WHERE%20%22Gender%22%20=%20%27", 
                    input$gender,"%27%20AND%20%22Race%22%20%3D%20%27", input$race, "%27%20")
@@ -104,7 +104,20 @@ ckanUnique <- function(id, field) {
      print(colnames(clean.data))
      return(clean.data)
    })
-   
+   #Reactive Element for Map
+   df.filter2 <- reactive ({
+     url <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20*%20FROM%20%227f5da957-01b5-4187-a842-3f215d30d7e8%22%20WHERE%20%22Gender%22%20=%20%27", 
+                   input$gender,"%27%20AND%20%22Race%22%20%3D%20%27", input$race, "%27%20")
+     # use ckan on url and make clean data
+     clean.data <- ckanSQL(url) %>% na.omit() %>%
+       mutate(Gender = plyr::revalue(Gender,  c("F" = 'Female',  "M" = 'Male'))
+       ) %>%
+       mutate(Race = plyr::revalue(Race,  c("A" = 'Asian',  "B" = 'Black', "H" = 'Hispanic', "I" = 'Indian', "U" = 'Unknown', "W" = 'White', "x" = 'Unreported')))
+     print(colnames(clean.data))
+     return(clean.data)
+     
+     
+   })
   
    
    #Create Chart 1  
@@ -126,9 +139,20 @@ ckanUnique <- function(id, field) {
        ylab("Adjusted Death Rate")
    })
    #Create Interactive Map
-   output$map <-  renderPlot({
-     df4 <- 
+   output$mymap <- render$leaflet({
      
+     readOGR("PaRailLines2018_07.geojson")
+   
+   #Create map
+   leaflet(data = pa.rails) %>%
+     addProviderTiles("OpenMapSurfer.Roads", options = providerTileOptions(noWrap = TRUE), group = "Default") %>%
+     addProviderTiles("Esri.DeLorme", options = providerTileOptions(noWrap = TRUE), group = "Topographical") %>%
+     addProviderTiles(providers$Esri.WorldImagery, options = providerTileOptions(noWrap = TRUE), group = "World") %>%
+     # Layers Control
+     addLayersControl(
+       baseGroups = c("Default", "Topographical", "World"),
+       options = layersControlOptions(collapsed = FALSE)
+     )  %>% addPolylines(color = "#63CBD4", popup = ~LINENAME)
    })
    # Create a Data Table
    output$datatable <- DT::renderDataTable({
