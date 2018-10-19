@@ -109,7 +109,7 @@ header <- dashboardHeader(title = "Fires in Pittsburgh")
    trial <- readOGR("2010_Census_Tracts.geojson") %>% na.omit
    fires <- df.filter2()
    #Create map
-   #pal <- colorFactor("orange", domain = c("latitude", ))
+   
    leaflet() %>%
      addProviderTiles("OpenStreetMap.France", options = providerTileOptions(noWrap = TRUE)) %>%
      #addProviderTiles("Esri.DeLorme", options = providerTileOptions(noWrap = TRUE), group = "Topographical") %>%
@@ -119,8 +119,8 @@ header <- dashboardHeader(title = "Fires in Pittsburgh")
         # baseGroups = c("Default", "Topographical", "World"),
          # options = layersControlOptions(collapsed = FALSE)
      # )  %>%
-     addPolygons(data = trial, fillOpacity = 0) %>%
-     addCircleMarkers(data = fires, lng = ~longitude, lat = ~latitude, radius = 1.5)# %>%
+     addPolygons(data = trial, fillOpacity = 0, color = "orange") %>%
+     addCircleMarkers(data = fires, lng = ~longitude, lat = ~latitude, radius = 1.5, dashArray = '4')# %>%
      #setView(zoom = 12)
    })
    
@@ -130,14 +130,14 @@ header <- dashboardHeader(title = "Fires in Pittsburgh")
    })
    
    #Create Chart 1  
-   # output$plot1 <- renderPlot({
-   #   df2 <- df.filter2()
-   #   ggplot(df2, aes(x = State, y = Deaths, color = State)) + 
-   #     geom_bar(stat = "identity") + 
-   #     ggtitle("Total Deaths per Accident per Year") + 
-   #     ylab("Total Deaths") +
-   #     theme(axis.text.x = element_text(angle = 90, hjust = 1))
-   # })
+   output$plot1 <- renderPlot({
+     df2 <- df.filter2() %>% filter(type_description %in% input$type)
+     ggplot(df2, aes(x = type_description, fill = type_description)) +
+       geom_bar() +
+       ggtitle("Counts of Fire") +
+       ylab("Fire Types") +
+       theme(axis.text.x = element_text(angle = 90, hjust = 1))
+   })
    # 
    # #Create Chart 2
    # output$plot2 <-  renderPlot({
