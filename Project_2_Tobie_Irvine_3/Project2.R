@@ -117,15 +117,15 @@ header <- dashboardHeader(title = "Fires in Pittsburgh")
    
    leaflet() %>%
      addProviderTiles("OpenStreetMap.France", options = providerTileOptions(noWrap = TRUE)) %>%
-     #addProviderTiles("Esri.DeLorme", options = providerTileOptions(noWrap = TRUE), group = "Topographical") %>%
+     addProviderTiles("Esri.DeLorme", options = providerTileOptions(noWrap = TRUE), group = "Topographical") %>%
      #addProviderTiles(providers$Esri.WorldImagery, options = providerTileOptions(noWrap = TRUE), group = "World") %>%
-      # Layers Control
-       #addLayersControl(
-        # baseGroups = c("Default", "Topographical", "World"),
-         # options = layersControlOptions(collapsed = FALSE)
-     # )  %>%
+     #  Layers Control
+       addLayersControl(
+        baseGroups = c("Default", "Topographical"),
+         options = layersControlOptions(collapsed = FALSE)
+      )  %>%
      addPolygons(data = trial, fillOpacity = 0, color = "orange") %>%
-     addCircleMarkers(data = fires, lng = ~longitude, lat = ~latitude, radius = 1.5, dashArray = '4')# %>%
+     addCircleMarkers(data = fires, lng = ~longitude, lat = ~latitude, radius = 1.5)# %>%
      #setView(zoom = 12)
    })
    
@@ -162,6 +162,8 @@ header <- dashboardHeader(title = "Fires in Pittsburgh")
      content = function(file) {
        write.csv(df.filter2(), file, row.names = FALSE)
      })
+   
+   
  }
  
  # Run the application 
