@@ -28,17 +28,7 @@ ckanSQL <- function(url) {
   data.frame(jsonlite::fromJSON(json)$result$records)
 }
 
-## Creation of ckan function for geojson data
-ckanMap <- function(url) {
-  # Make the Request
-  r <- RETRY("GET", URLencode(url))
-  # Extract Content
-  c <- content(r, "text")
-  # Basic gsub to make NA's consistent with R
-  json <- gsub('NaN', 'NA', c, perl = TRUE)
-  # Create Dataframe
-  readOGR(json)
-}
+
 ## Unique values for Resource Field
 ckanUnique <- function(id, field) {
   url <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20DISTINCT(%22", field, "%22)%20from%20%22", id, "%22")
@@ -47,7 +37,7 @@ ckanUnique <- function(id, field) {
 
 ##Create choices for fields of Race and Gender
 neighborhood_choices <- sort(ckanUnique("8d76ac6b-5ae8-4428-82a4-043130d17b02", "neighborhood")$neighborhood)
-# race_choices <- sort(ckanUnique("7f5da957-01b5-4187-a842-3f215d30d7e8", "Race")$Race)
+type_description_choices <- sort(ckanUnique("8d76ac6b-5ae8-4428-82a4-043130d17b02", "type_description")$type_description)
 
 #Relabel choices of gender and race (input in user interface)
 # Moved gender choice refactoring to the reactive function
@@ -76,22 +66,20 @@ header <- dashboardHeader(title = "hahahaha")
      tabItem("plot",
              fluidRow(
                box(
-                 selectInput(inputId = "neighborhood1", label = "Pick a neighborhood", 
-                             choices = neighborhood_choices, multiple = TRUE)
-               ))
-             ,
+                 selectizeInput(inputId = "type", label = "Type of Fire", 
+                             choices = type_description_choices, multiple = TRUE, options = list(maxItems = 4))
+               )),
              fluidRow(
                tabBox(title = "Plot",
                       width = 12,
                       tabPanel("Chart 1", plotOutput("plot1")),
                       tabPanel("Chart 2", plotOutput("plot2"))
-                      ))
-           
-           ),
+                      ))),
      tabItem("datatable",
              fluidPage(
-               box(title = "Selected Character Stats", DT::dataTableOutput("datatable"), width = 12))
+               box(title = "Fire Incidents", DT::dataTableOutput("datatable"), width = 12))
      )))
+ 
  # Define UI for shiny dashboard
  ui <- dashboardPage(header, sidebar, body)
  
@@ -100,16 +88,19 @@ header <- dashboardHeader(title = "hahahaha")
   
    #Reactive Element for Map
    df.filter2 <- reactive ({
-     #types_filter <- ifelse(length(input$neighborhood) > 0, 
-     #                        paste0("%20AND%20%22neighborhood%22%20IN%20(%27", paste(input$neighborhood, collapse = "%27,%27"),"%27)"),
-     #                        "")
+     types_filter <- ifelse(length(input$neighborhood) > 0, 
+                             paste0("%22neighborhood%22%20IN%20(%27", paste(input$neighborhood, collapse = "%27,%27"),"%27)"),
+                             "")
      # url <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20*%20FROM%20%2276fda9d0-69be-4dd5-8108-0de7907fc5a4%22%20WHERE%20%22CREATED_ON%22%20%3E=%20%27", input$dates[1],
      #               "%27%20AND%20%22CREATED_ON%22%20%3C=%20%27", input$dates[2], "%27", types_filter)
      # 
+    #url2 <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20*%20FROM%20%228d76ac6b-5ae8-4428-82a4-043130d17b02%22%20WHERE%20%22alarm_time%22%20%3E=%20%27",input$dates[1],"%27%20AND%20%22alarm_time%22%20%3C=%20%27",input$dates[2] ,"%27%20%22neighborhood%22%20=%20%27Bloomfield%27%20")
+    url3 <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20*%20FROM%20%228d76ac6b-5ae8-4428-82a4-043130d17b02%22%20WHERE%20", types_filter)
+    
      
-     url <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20*%20FROM%20%228d76ac6b-5ae8-4428-82a4-043130d17b02%22%20WHERE%20%22neighborhood%22%20=%20%27Bloomfield%27%20")
+    # url <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20*%20FROM%20%228d76ac6b-5ae8-4428-82a4-043130d17b02%22%20WHERE%20%22neighborhood%22%20=%20%27Bloomfield%27%20")
      # use ckan on url and make clean data
-     clean.data <- ckanSQL(url)
+     clean.data <- ckanSQL(url3)
      print(colnames(clean.data))
      return(clean.data)
    })
@@ -121,16 +112,16 @@ header <- dashboardHeader(title = "hahahaha")
    #Create map
    #pal <- colorFactor("orange", domain = c("latitude", ))
    leaflet() %>%
-     addProviderTiles("OpenStreetMap.France", options = providerTileOptions(noWrap = TRUE), group = "Default") %>%
-     addProviderTiles("Esri.DeLorme", options = providerTileOptions(noWrap = TRUE), group = "Topographical") %>%
-     addProviderTiles(providers$Esri.WorldImagery, options = providerTileOptions(noWrap = TRUE), group = "World") %>%
+     addProviderTiles("OpenStreetMap.France", options = providerTileOptions(noWrap = TRUE)) %>%
+     #addProviderTiles("Esri.DeLorme", options = providerTileOptions(noWrap = TRUE), group = "Topographical") %>%
+     #addProviderTiles(providers$Esri.WorldImagery, options = providerTileOptions(noWrap = TRUE), group = "World") %>%
       # Layers Control
-       addLayersControl(
-         baseGroups = c("Default", "Topographical", "World"),
-          options = layersControlOptions(collapsed = FALSE)
-      )  %>%
-     addCircleMarkers(data = fires, lng = ~longitude, lat = ~latitude, radius = 1.5) %>%
-     addPolygons(data = trial, fillOpacity = 0)# %>%
+       #addLayersControl(
+        # baseGroups = c("Default", "Topographical", "World"),
+         # options = layersControlOptions(collapsed = FALSE)
+     # )  %>%
+     addPolygons(data = trial, fillOpacity = 0) %>%
+     addCircleMarkers(data = fires, lng = ~longitude, lat = ~latitude, radius = 1.5)# %>%
      #setView(zoom = 12)
    })
    
@@ -145,7 +136,7 @@ header <- dashboardHeader(title = "hahahaha")
    # })
    # Create a Data Table
    output$datatable <- DT::renderDataTable({
-     subset(df.filter2(), select = c(neighborhood, address, type_description, police_zone, fire_zone))
+     subset(df.filter2(), select = c(alarm_time, neighborhood, address, type_description, police_zone))
    })
    
    #Create Chart 1  
