@@ -35,16 +35,13 @@ ckanUnique <- function(id, field) {
   c(ckanSQL(URLencode(url)))
 }
 
-##Create choices for fields of Race and Gender
+##Create choices for Neighborhood and type of fire
 neighborhood_choices <- sort(ckanUnique("8d76ac6b-5ae8-4428-82a4-043130d17b02", "neighborhood")$neighborhood)
 type_description_choices <- sort(ckanUnique("8d76ac6b-5ae8-4428-82a4-043130d17b02", "type_description")$type_description)
 
-#Relabel choices of gender and race (input in user interface)
-# Moved gender choice refactoring to the reactive function
-
 
 ##UI for Shiny App
-header <- dashboardHeader(title = "hahahaha")
+header <- dashboardHeader(title = "Fires in Pittsburgh")
  sidebar <- dashboardSidebar(
   
    sidebarMenu(
@@ -86,29 +83,29 @@ header <- dashboardHeader(title = "hahahaha")
  # Define server logic
  server <- function(input, output) {
   
-   #Reactive Element for Map
+   #Reactive Element for Map AND Charts
    df.filter2 <- reactive ({
      types_filter <- ifelse(length(input$neighborhood) > 0, 
                              paste0("%22neighborhood%22%20IN%20(%27", paste(input$neighborhood, collapse = "%27,%27"),"%27)"),
                              "")
-     #Url with both neighborhood and dates: DOES NOT WORK
-     # url <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20*%20FROM%20%2276fda9d0-69be-4dd5-8108-0de7907fc5a4%22%20WHERE%20%22CREATED_ON%22%20%3E=%20%27", input$dates[1],
-     #               "%27%20AND%20%22CREATED_ON%22%20%3C=%20%27", input$dates[2], "%27", types_filter)
-     #url with date only: DOES NOT WORK
+     #Url with both neighborhood and dates as inputs: DOES NOT WORK
+     # url <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20*%20FROM%20%228d76ac6b-5ae8-4428-82a4-043130d17b02%22%20WHERE%20%22alarm_time%22%20%3E=%20%27", input$dates[1],
+     #               "%27%20AND%20%22alarm_time%22%20%3C=%20%27", input$dates[2], "%27%20AND%20", types_filter)
+     #url with date and neighborhood Bloomfield: DOES NOT WORK (included static Bloomfield neighborhood that does have data between default data)
     #url2 <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20*%20FROM%20%228d76ac6b-5ae8-4428-82a4-043130d17b02%22%20WHERE%20%22alarm_time%22%20%3E=%20%27",input$dates[1],"%27%20AND%20%22alarm_time%22%20%3C=%20%27",input$dates[2] ,"%27%20%22neighborhood%22%20=%20%27Bloomfield%27%20")
-    #url with just neighborhood data 
+    
+     #url with just neighborhood data: this WORKS 
      url3 <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20*%20FROM%20%228d76ac6b-5ae8-4428-82a4-043130d17b02%22%20WHERE%20", types_filter)
     
-     
+     #Base url to test: IT WORKS
     # url <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20*%20FROM%20%228d76ac6b-5ae8-4428-82a4-043130d17b02%22%20WHERE%20%22neighborhood%22%20=%20%27Bloomfield%27%20")
      # use ckan on url and make clean data
      clean.data <- ckanSQL(url3)
      print(colnames(clean.data))
      return(clean.data)
    })
-   #Create Interactive Map
+   #Create Interactive Map: THIS WORKS
    output$mymap <- renderLeaflet({
-     
    trial <- readOGR("2010_Census_Tracts.geojson") %>% na.omit
    fires <- df.filter2()
    #Create map
@@ -127,23 +124,14 @@ header <- dashboardHeader(title = "hahahaha")
      #setView(zoom = 12)
    })
    
-   #Reactive Element for Charts and Datatable 
-   # df.filter <- reactive ({
-   #   url <- paste0()
-   #   # use ckan on url and make clean data
-   #   clean.data <- ckanSQL(url) %>% na.omit()
-   #    
-   #   print(colnames(clean.data))
-   #   return(clean.data)
-   # })
-   # Create a Data Table
+   # Create a Data Table: THIS WORKS
    output$datatable <- DT::renderDataTable({
-     subset(df.filter2(), select = c(alarm_time, neighborhood, address, type_description, police_zone))
+     subset(df.filter2(), select = c(alarm_time, neighborhood, address, type_description, longitude))
    })
    
    #Create Chart 1  
    # output$plot1 <- renderPlot({
-   #   df2 <- deathInput()
+   #   df2 <- df.filter2()
    #   ggplot(df2, aes(x = State, y = Deaths, color = State)) + 
    #     geom_bar(stat = "identity") + 
    #     ggtitle("Total Deaths per Accident per Year") + 
@@ -153,7 +141,7 @@ header <- dashboardHeader(title = "hahahaha")
    # 
    # #Create Chart 2
    # output$plot2 <-  renderPlot({
-   #   df3 <- deathInput()
+   #   df3 <- df.filter2()
    #   ggplot(df3, aes(x = State, y = Age.adjusted.Death.Rate, color = State)) + 
    #     geom_bar(stat = "identity") + 
    #     ggtitle("Death Rate (per 100,000) per Accident per Year") + 
