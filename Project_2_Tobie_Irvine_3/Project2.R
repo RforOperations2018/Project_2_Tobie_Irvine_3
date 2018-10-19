@@ -63,7 +63,7 @@ header <- dashboardHeader(title = "hahahaha")
      menuItem("Charts", icon = icon("bar-chart"), tabName = "plot"),
      menuItem("Data Table", icon = icon("table"), tabName = "datatable"),
      dateRangeInput(inputId = "dates", label = "Select Dates", start = Sys.Date()-30, end = Sys.Date()),
-     selectizeInput(inputId = "neighborhood", label = "Pick a neighborhood", multiple = TRUE, choices = neighborhood_choices, options = list(maxItems = 4))
+     selectizeInput(inputId = "neighborhood", label = "Pick a neighborhood", selected = "Bloomfield", multiple = TRUE, choices = neighborhood_choices, options = list(maxItems = 4))
    )
  )
  
