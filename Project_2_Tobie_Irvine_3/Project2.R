@@ -38,7 +38,7 @@ ckanUnique <- function(id, field) {
 ##Create choices for Neighborhood and type of fire
 neighborhood_choices <- sort(ckanUnique("8d76ac6b-5ae8-4428-82a4-043130d17b02", "neighborhood")$neighborhood)
 type_description_choices <- sort(ckanUnique("8d76ac6b-5ae8-4428-82a4-043130d17b02", "type_description")$type_description)
-
+ward_choices <- sort(ckanUnique("8d76ac6b-5ae8-4428-82a4-043130d17b02", "ward")$ward)
 
 ##UI for Shiny App
 header <- dashboardHeader(title = "Fires in Pittsburgh")
@@ -64,13 +64,15 @@ header <- dashboardHeader(title = "Fires in Pittsburgh")
              fluidRow(
                box(
                  selectizeInput(inputId = "type", label = "Type of Fire", 
-                             choices = type_description_choices, multiple = TRUE, options = list(maxItems = 4))
+                             choices = type_description_choices, multiple = TRUE, options = list(maxItems = 4))),
+               box(
+                 selectizeInput(inputId = "ward", label = "Wards", choices = ward_choices, multiple = TRUE, options = list(maxItems = 4))
                )),
              fluidRow(
                tabBox(title = "Plot",
                       width = 12,
-                      tabPanel("Chart 1", plotOutput("plot1")),
-                      tabPanel("Chart 2", plotOutput("plot2"))
+                      tabPanel("Fire Type", plotOutput("plot1")),
+                      tabPanel("Ward", plotOutput("plot2"))
                       ))),
      tabItem("datatable",
              fluidPage(
@@ -92,7 +94,7 @@ header <- dashboardHeader(title = "Fires in Pittsburgh")
      # url <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20*%20FROM%20%228d76ac6b-5ae8-4428-82a4-043130d17b02%22%20WHERE%20%22alarm_time%22%20%3E=%20%27", input$dates[1],
      #               "%27%20AND%20%22alarm_time%22%20%3C=%20%27", input$dates[2], "%27%20AND%20", types_filter)
      #url with date and neighborhood Bloomfield: DOES NOT WORK (included static Bloomfield neighborhood that does have data between default data)
-    #url2 <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20*%20FROM%20%228d76ac6b-5ae8-4428-82a4-043130d17b02%22%20WHERE%20%22alarm_time%22%20%3E=%20%27",input$dates[1],"%27%20AND%20%22alarm_time%22%20%3C=%20%27",input$dates[2] ,"%27%20%22neighborhood%22%20=%20%27Bloomfield%27%20")
+    #url2 <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20*%20FROM%20%228d76ac6b-5ae8-4428-82a4-043130d17b02%22%20WHERE%20%22alarm_time%22%20%3E=%20%27",input$dates[1], 'T00:00:00',"%27%20AND%20%22alarm_time%22%20%3C=%20%27",input$dates[2] , 'T23:59:59', "%27%20%22neighborhood%22%20=%20%27Bloomfield%27%20")
     
      #url with just neighborhood data: this WORKS 
      url3 <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20*%20FROM%20%228d76ac6b-5ae8-4428-82a4-043130d17b02%22%20WHERE%20", types_filter)
@@ -126,7 +128,7 @@ header <- dashboardHeader(title = "Fires in Pittsburgh")
    
    # Create a Data Table: THIS WORKS
    output$datatable <- DT::renderDataTable({
-     subset(df.filter2(), select = c(alarm_time, neighborhood, address, type_description, longitude))
+     subset(df.filter2(), select = c(alarm_time, neighborhood, ward, type_description, longitude))
    })
    
    #Create Chart 1  
@@ -134,19 +136,22 @@ header <- dashboardHeader(title = "Fires in Pittsburgh")
      df2 <- df.filter2() %>% filter(type_description %in% input$type)
      ggplot(df2, aes(x = type_description, fill = type_description)) +
        geom_bar() +
-       ggtitle("Counts of Fire") +
-       ylab("Fire Types") +
-       theme(axis.text.x = element_text(angle = 90, hjust = 1))
+       ggtitle("Counts of Fire by Type") +
+       ylab("Count") +
+       xlab("Fire Type") +
+       theme(axis.text.x = element_text(angle = 45, hjust = 1))
    })
    # 
    # #Create Chart 2
-   # output$plot2 <-  renderPlot({
-   #   df3 <- df.filter2()
-   #   ggplot(df3, aes(x = State, y = Age.adjusted.Death.Rate, color = State)) + 
-   #     geom_bar(stat = "identity") + 
-   #     ggtitle("Death Rate (per 100,000) per Accident per Year") + 
-   #     ylab("Adjusted Death Rate")
-   # })
+   output$plot2 <-  renderPlot({
+     df3 <- df.filter2() %>% filter(ward %in% input$ward)
+     ggplot(df3, aes(x = ward, fill = ward)) +
+       geom_bar() +
+       ggtitle("Counts of Fire by Ward") +
+       ylab("Count") +
+       xlab("Ward") +
+       theme(axis.text.x = element_text(angle = 45, hjust = 1))
+   })
  }
  
  # Run the application 
