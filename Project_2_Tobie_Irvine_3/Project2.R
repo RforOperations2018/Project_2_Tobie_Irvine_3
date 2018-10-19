@@ -49,7 +49,7 @@ header <- dashboardHeader(title = "Fires in Pittsburgh")
      menuItem("Map", icon = icon("map"), tabName = "map"),
      menuItem("Charts", icon = icon("bar-chart"), tabName = "plot"),
      menuItem("Data Table", icon = icon("table"), tabName = "datatable"),
-     dateRangeInput(inputId = "dates", label = "Select Dates", start = Sys.Date()-30, end = Sys.Date()),
+     dateRangeInput(inputId = "dates", label = "Select Dates", start = "2018-05-03", end = Sys.Date()),
      selectizeInput(inputId = "neighborhood", label = "Pick a neighborhood", selected = "Bloomfield", multiple = TRUE, choices = neighborhood_choices, options = list(maxItems = 4)),
      downloadButton("new.download", label = "Download File"),
      actionButton("click", "Refresh")
@@ -90,21 +90,22 @@ header <- dashboardHeader(title = "Fires in Pittsburgh")
    #Reactive Element for Map AND Charts
    df.filter2 <- reactive ({
      types_filter <- ifelse(length(input$neighborhood) > 0, 
-                             paste0("%22neighborhood%22%20IN%20(%27", paste(input$neighborhood, collapse = "%27,%27"),"%27)"),
+                             paste0("%20AND%20%22neighborhood%22%20IN%20(%27", paste(input$neighborhood, collapse = "%27,%27"),"%27)"),
                              "")
      #Url with both neighborhood and dates as inputs: DOES NOT WORK
      # url <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20*%20FROM%20%228d76ac6b-5ae8-4428-82a4-043130d17b02%22%20WHERE%20%22alarm_time%22%20%3E=%20%27", input$dates[1],
      #               "%27%20AND%20%22alarm_time%22%20%3C=%20%27", input$dates[2], "%27%20AND%20", types_filter)
      #url with date and neighborhood Bloomfield: DOES NOT WORK (included static Bloomfield neighborhood that does have data between default data)
-    url2 <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20*%20FROM%20%228d76ac6b-5ae8-4428-82a4-043130d17b02%22%20WHERE%20%22alarm_time%22%20%3E=%20%27", input$dates[1], "T00:00:00%27%20AND%20%22alarm_time%22%20%3C=%20%27",input$dates[2] , "T23:59:59%27%20AND%20%22neighborhood%22%20=%20%27Bloomfield%27%20")
+
+    #url2 <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20*%20FROM%20%228d76ac6b-5ae8-4428-82a4-043130d17b02%22%20WHERE%20%22alarm_time%22%20%3E=%20%27", input$dates[1], "T00:00:00%27%20AND%20%22alarm_time%22%20%3C=%20%27",input$dates[2] , "T23:59:59%27%20AND%20%22neighborhood%22%20=%20%27Bloomfield%27%20")
+    url4 <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20*%20FROM%20%228d76ac6b-5ae8-4428-82a4-043130d17b02%22%20WHERE%20%22alarm_time%22%20%3E=%20%27", input$dates[1], "T00:00:00%27%20AND%20%22alarm_time%22%20%3C=%20%27",input$dates[2] , "T23:59:59%27", types_filter)
+    
     
      #url with just neighborhood data: this WORKS 
-     #url3 <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20*%20FROM%20%228d76ac6b-5ae8-4428-82a4-043130d17b02%22%20WHERE%20", types_filter)
+     #urlr <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20*%20FROM%20%228d76ac6b-5ae8-4428-82a4-043130d17b02%22%20WHERE%20", types_filter)
     
-     #Base url to test: IT WORKS
-    # url <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20*%20FROM%20%228d76ac6b-5ae8-4428-82a4-043130d17b02%22%20WHERE%20%22neighborhood%22%20=%20%27Bloomfield%27%20")
-     # use ckan on url and make clean data
-     clean.data <- ckanSQL(url2)
+     # use ckan on url
+     clean.data <- ckanSQL(url4)
      print(colnames(clean.data))
      return(clean.data)
    })
