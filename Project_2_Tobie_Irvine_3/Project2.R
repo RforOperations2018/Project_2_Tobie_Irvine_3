@@ -68,6 +68,7 @@ header <- dashboardHeader(title = "Fires in Pittsburgh")
                  selectizeInput(inputId = "type", label = "Type of Fire", 
                              choices = type_description_choices, multiple = TRUE, selected = "Building fire", options = list(maxItems = 6))),
                box(
+                 # So this was a bit confusing how the Type and Ward filters showed up no matter which tab I had, I assumed both filters would impact both plots, but then realized they only related to one tab. That's fine, but then you probably should have put them inside the same tabBox as the chart.
                  selectizeInput(inputId = "ward", label = "Wards", choices = ward_choices, multiple = TRUE, selected = 8, options = list(maxItems = 6))
                )),
              fluidRow(
@@ -90,7 +91,7 @@ header <- dashboardHeader(title = "Fires in Pittsburgh")
    #Reactive Element for Map AND Charts
    df.filter2 <- reactive ({
      types_filter <- ifelse(length(input$neighborhood) > 0, 
-                             paste0("%20AND%20%22neighborhood%22%20IN%20(%27", paste(input$neighborhood, collapse = "%27,%27"),"%27)"),
+                             paste0("%20AND%20%22neighborhood%22%20IN%20(%27", paste(input$neighborhood, collapse = "%27,%27"),"%27)"), # You didn't do a gsub in your paste function here or in the ckanSQL function so anytime I select a neighborhood with a space in the name the App breaks. Fully test your apps!
                              "")
     url4 <- paste0("https://data.wprdc.org/api/action/datastore_search_sql?sql=SELECT%20*%20FROM%20%228d76ac6b-5ae8-4428-82a4-043130d17b02%22%20WHERE%20%22alarm_time%22%20%3E=%20%27", input$dates[1], "T00:00:00%27%20AND%20%22alarm_time%22%20%3C=%20%27",input$dates[2] , "T23:59:59%27", types_filter)
     # use ckan on url
@@ -112,6 +113,7 @@ header <- dashboardHeader(title = "Fires in Pittsburgh")
         baseGroups = c("Default", "Topographical"),
          options = layersControlOptions(collapsed = FALSE)
       )  %>%
+     # There's a neighborhood selector, so why don't you subset the neighborhood shapefile? That's a bit odd... You don't necessarily have to use the API to do so.
      addPolygons(data = trial, fillOpacity = 0, color = "orange", label = ~hood) %>%
      addCircleMarkers(data = fires, lng = ~longitude, lat = ~latitude, radius = 1.5)# %>%
    })
